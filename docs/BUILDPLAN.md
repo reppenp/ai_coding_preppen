@@ -3,8 +3,8 @@
 _This file is the phased build plan for the project. It's the bridge between `docs/PRD.md` (what to build) + `docs/DESIGN.md` (what it looks like) and the actual code. Fill it out with the `build-plan` skill after the PRD and design brief are stable. Re-run the skill whenever reality has diverged from the plan._
 
 > **Status:** Draft
-> **Last updated:** 2026-05-12
-> **Current phase:** Phase 0
+> **Last updated:** 2026-05-15
+> **Current phase:** Phase 1 (Phase 0 complete)
 
 ---
 
@@ -50,11 +50,11 @@ That way each phase fits in a focused session — no full-repo loads, no thrashi
 - `GET /health → 200` smoke test
 
 **Done-when:**
-- [ ] `npm test` passes.
-- [ ] `wrangler dev` starts without errors.
-- [ ] `wrangler deploy` produces a public URL.
-- [ ] URL is in `README.md`.
-- [ ] D1 schema is migrated locally (`wrangler d1 migrations apply`).
+- [x] `npm test` passes.
+- [x] `wrangler dev` starts without errors. _(Verified via vitest-pool-workers running the Worker in the workerd/miniflare runtime + a successful production deploy serving 200 — no literal `wrangler dev` session was run.)_
+- [x] `wrangler deploy` produces a public URL. → https://ai-coding-preppen.pjreppen.workers.dev
+- [x] URL is in `README.md`.
+- [x] D1 schema is migrated locally (`wrangler d1 migrations apply`).
 
 **Session budget:** ~1 session.
 
@@ -102,7 +102,7 @@ That way each phase fits in a focused session — no full-repo loads, no thrashi
 **Context to load:** `CLAUDE.md`, `docs/PRD.md` §4 story 2, §5 (form structure), §7 (draft/save behavior), `docs/DESIGN.md` §2 & §3, `src/routes/orders.ts`, `src/db/schema.sql`.
 
 **Files this phase creates/modifies:**
-- `src/db/schema.sql` — `form_responses` table (per-section JSON blobs, saved_at timestamp)
+- `src/db/schema.sql` — `form_responses` ALREADY EXISTS (created in Phase 0 as one row per inspection with provisional typed columns, `UNIQUE(inspection_id)`). This phase ALTERs it to the finalized field list — see Risks below.
 - `src/routes/forms.ts` — `GET /api/orders/:id/form` (load saved state), `PUT /api/orders/:id/form` (auto-save per section), `POST /api/orders/:id/submit` (final submit)
 - `src/routes/forms.test.ts` — API tests for load, save, submit
 - `src/client/pages/InspectionForm.tsx` — 4-section stepped form with progress indicator
@@ -126,6 +126,8 @@ That way each phase fits in a focused session — no full-repo loads, no thrashi
 **Session budget:** 2 sessions.
 
 **Risks / unknowns:** Auto-save strategy — debounce on field blur vs. explicit "Save section" button. The PRD says save must not lose work on connectivity loss; consider explicit save button per section to make the save state obvious to John.
+
+**⚠️ Prerequisite — KNOWN DEBT carried from Phase 0:** `form_responses`' columns are provisional best-guesses off PRD §5 topics (see the ⚠️ block atop `src/db/schema.sql`). **PRD §8 Risk 4 (define required vs. optional form fields) is still OPEN and MUST be resolved before this phase's form work** — otherwise the field list, column names/types, and required flags are guesses. Expect `ALTER TABLE` migrations (new numbered migration files, not edits to `0001`) once the real fields are defined.
 
 ---
 

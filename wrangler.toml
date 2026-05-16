@@ -1,0 +1,26 @@
+name = "ai-coding-preppen"
+main = "src/index.ts"
+compatibility_date = "2025-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Structured data: inspection orders, form responses, underwriter decisions.
+# database_id is filled in by `wrangler d1 create inspections` (see Phase 0 setup).
+[[d1_databases]]
+binding = "DB"
+database_name = "inspections"
+database_id = "0b40f043-a5ca-40e5-8697-f63f980ba4d6"
+migrations_dir = "migrations"
+
+# Photo storage (Phase 3). The current OAuth token has no `r2` scope, so this
+# binding is intentionally commented out — enabling it now would fail
+# `wrangler deploy`. Before Phase 3: re-auth with R2 enabled (or create the
+# bucket in the dashboard), then uncomment.
+# [[r2_buckets]]
+# binding = "PHOTOS"
+# bucket_name = "inspection-photos"
+
+# React SPA build output (Phase 1). No client build exists yet in Phase 0.
+# [assets]
+# directory = "./dist/client"
+# binding = "ASSETS"
+# not_found_handling = "single-page-application"
