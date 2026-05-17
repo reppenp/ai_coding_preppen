@@ -19,5 +19,11 @@
       "@cloudflare/vitest-pool-workers"
     ]
   },
-  "include": ["src", "vitest.config.ts"]
+  "include": [
+    "src",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "vitest.client.config.ts",
+    "vitest.workspace.ts"
+  ]
 }

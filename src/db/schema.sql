@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS inspections (
   source             TEXT CHECK (source IN ('Policy', 'Claims')),
   insured_name       TEXT NOT NULL,
   property_address   TEXT NOT NULL,
+  -- property_use added in migration 0002. Nullable in the DB (PRD §8 Risk 4
+  -- still open); the New Order form requires it at the UI layer.
+  property_use       TEXT,
   contact_name       TEXT,
   contact_phone      TEXT,
   assigned_inspector TEXT,

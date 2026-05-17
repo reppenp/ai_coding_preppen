@@ -3,8 +3,8 @@
 _This file is the phased build plan for the project. It's the bridge between `docs/PRD.md` (what to build) + `docs/DESIGN.md` (what it looks like) and the actual code. Fill it out with the `build-plan` skill after the PRD and design brief are stable. Re-run the skill whenever reality has diverged from the plan._
 
 > **Status:** Draft
-> **Last updated:** 2026-05-15
-> **Current phase:** Phase 1 (Phase 0 complete)
+> **Last updated:** 2026-05-16
+> **Current phase:** Phase 2 (Phases 0–1 complete)
 
 ---
 
@@ -84,14 +84,14 @@ That way each phase fits in a focused session — no full-repo loads, no thrashi
 - NewOrder form submits and redirects to Dashboard (component test)
 
 **Done-when:**
-- [ ] Jeff can fill out the New Order form and submit it.
-- [ ] The Dashboard shows the new order with status "Ordered" and a created date.
-- [ ] All three API tests pass.
-- [ ] `npm test` passes.
+- [x] Jeff can fill out the New Order form and submit it. _(NewOrder.tsx → POST /api/orders → redirect; covered by NewOrder.test.tsx)_
+- [x] The Dashboard shows the new order with status "Ordered" and a created date. _(Dashboard.tsx TanStack table + StatusBadge; covered by Dashboard.test.tsx)_
+- [x] All three API tests pass. _(orders.test.ts: create→201/id, missing-required→400, list→status+created_at; +2 extra: persisted status, invalid source)_
+- [x] `npm test` passes. _(10/10 across workers + client projects; `npm run typecheck` and `npm run build` also green)_
 
 **Session budget:** 1–2 sessions.
 
-**Risks / unknowns:** Status enum design — define all valid statuses upfront (Ordered → In Progress → Submitted → Reviewed) to avoid a migration mid-build.
+**Risks / unknowns:** Status enum design — define all valid statuses upfront (Ordered → In Progress → Submitted → Reviewed) to avoid a migration mid-build. _Resolved: enum was already fixed in Phase 0's schema; no migration needed for it. A separate `property_use` gap (PRD §4 story 1) required migration `0002`._
 
 ---
 
@@ -202,6 +202,10 @@ That way each phase fits in a focused session — no full-repo loads, no thrashi
 | Date | Phase touched | Change | Reason |
 |---|---|---|---|
 | 2026-05-12 | — | Initial plan | PRD and DESIGN.md complete; starting from scratch |
+| 2026-05-16 | Phase 1 | Added frontend build pipeline (Vite, Tailwind/PostCSS, index.html, main.tsx, react-router-dom) — not in original file list | Phase 0 scaffolded only the Worker; the SPA had no build at all. Prerequisite for any UI phase. |
+| 2026-05-16 | Phase 1 | Added `react-router-dom` (runtime dep) | Routing across `/`, `/orders/new`; `/orders/:id` & `/review` stubbed for Phases 2/4. Approved by developer. |
+| 2026-05-16 | Phase 1 | Split tests into a vitest **workspace**: `workers` (pool) + `client` (jsdom). Added @testing-library/* + jsdom dev deps | The Workers pool can't render React; component tests in BUILDPLAN need a DOM. Approved by developer. |
+| 2026-05-16 | Phase 1 / Phase 2 | Migration `0002` adds `inspections.property_use` (nullable) | PRD §4 story 1 requires "property use"; Phase 0 schema omitted it. DB stays permissive (PRD §8 Risk 4 still open); form requires it at UI layer. |
 
 ---
 

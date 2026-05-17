@@ -50,6 +50,24 @@ This is the starter repository for **AI Foundations: Architecting the Next Gener
    ```
    Output is 3–6 phases sized to fit one Claude Code session each. Re-run it when the plan drifts from reality.
 
+## Running it locally
+
+```
+npm install
+npm run db:migrate     # apply D1 migrations to the local database
+npm run build          # build the React SPA into dist/client
+npm run dev            # wrangler dev — serves the Worker API + built SPA
+npm test               # full suite: Workers-runtime API tests + jsdom UI tests
+npm run typecheck      # tsc --noEmit
+```
+
+- `npm run dev:client` runs the Vite dev server with HMR for fast UI work, but
+  it does **not** serve `/api` — use `npm run build` + `npm run dev` for an
+  end-to-end local run.
+- `npm run deploy` runs `npm run build` first, so `wrangler deploy` always
+  ships the current SPA. Before the first remote deploy of new schema, also run
+  `npm run db:migrate:remote`.
+
 ## The skills
 
 Use them like this:

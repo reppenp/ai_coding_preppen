@@ -19,8 +19,11 @@ migrations_dir = "migrations"
 # binding = "PHOTOS"
 # bucket_name = "inspection-photos"
 
-# React SPA build output (Phase 1). No client build exists yet in Phase 0.
-# [assets]
-# directory = "./dist/client"
-# binding = "ASSETS"
-# not_found_handling = "single-page-application"
+# React SPA build output (Phase 1). `npm run build` (vite) emits ./dist/client.
+# Workers serves a matching static file if present, else invokes the Worker;
+# unmatched non-API paths fall back to index.html so client-side routing works.
+# Run `npm run build` before `wrangler deploy`.
+[assets]
+directory = "./dist/client"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
