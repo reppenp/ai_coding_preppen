@@ -53,3 +53,85 @@ export async function createOrder(
   }
   return (await res.json()) as { id: string };
 }
+
+// ─── Inspection form (Phase 2, Story 2) ────────────────────────────────────
+// Wraps GET/PUT /api/orders/:id/form + POST /api/orders/:id/submit. The
+// contract mirrors src/routes/forms.ts: every answer column is nullable, GET
+// returns booleans as 0/1 integers, and submit enforces the 8-field gate.
+
+/** One answer value as it travels over the wire. null = unanswered. */
+export type FormValue = string | number | boolean | null;
+export type FormValues = Record<string, FormValue>;
+
+/** Order header the form page needs (there is no GET /api/orders/:id in v1). */
+export interface FormOrderMeta {
+  id: string;
+  status: OrderStatus;
+  insured_name: string;
+  property_address: string;
+  property_use: string | null;
+}
+
+export interface FormLoad {
+  order: FormOrderMeta;
+  form: FormValues;
+}
+
+export async function loadForm(id: string): Promise<FormLoad> {
+  const res = await fetch(`/api/orders/${id}/form`);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Failed to load inspection (${res.status})`);
+  }
+  return (await res.json()) as FormLoad;
+}
+
+/** Save one section's fields. Idempotent upsert server-side — safe to retry
+ *  after a connectivity blip (PRD §8 Risk 1). */
+export async function saveFormSection(
+  id: string,
+  values: FormValues,
+): Promise<{ ok: true; updated_at: string }> {
+  const res = await fetch(`/api/orders/${id}/form`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(values),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Failed to save section (${res.status})`);
+  }
+  return (await res.json()) as { ok: true; updated_at: string };
+}
+
+/** Thrown when submit is rejected because required fields are unanswered.
+ *  `missing` is the list of field names the API reported (PRD §5 gate). */
+export class SubmitIncompleteError extends Error {
+  missing: string[];
+  constructor(missing: string[]) {
+    super("Inspection is incomplete.");
+    this.name = "SubmitIncompleteError";
+    this.missing = missing;
+  }
+}
+
+export async function submitForm(
+  id: string,
+): Promise<{ ok: true; status: OrderStatus }> {
+  const res = await fetch(`/api/orders/${id}/submit`, { method: "POST" });
+  if (res.status === 400) {
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      missing?: string[];
+    };
+    if (body.missing) throw new SubmitIncompleteError(body.missing);
+    throw new Error(body.error ?? "Failed to submit inspection (400)");
+  }
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(
+      body.error ?? `Failed to submit inspection (${res.status})`,
+    );
+  }
+  return (await res.json()) as { ok: true; status: OrderStatus };
+}

@@ -1,7 +1,17 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { Dashboard } from "./Dashboard";
 import type { Order } from "../api";
+
+// Dashboard now renders <Link> cells, so it needs a Router context.
+function renderDashboard() {
+  return render(
+    <MemoryRouter>
+      <Dashboard />
+    </MemoryRouter>,
+  );
+}
 
 function order(overrides: Partial<Order> = {}): Order {
   return {
@@ -42,7 +52,7 @@ describe("Dashboard", () => {
       order({ id: "b", insured_name: "Beta LLC", status: "Ordered" }),
     ]);
 
-    render(<Dashboard />);
+    renderDashboard();
 
     expect(await screen.findByText("Acme Corp")).toBeInTheDocument();
     expect(screen.getByText("Beta LLC")).toBeInTheDocument();
@@ -51,9 +61,17 @@ describe("Dashboard", () => {
     expect(screen.getByText("Ordered")).toBeInTheDocument();
   });
 
+  it("links each insured name to its inspection form", async () => {
+    mockFetch([order({ id: "ord-42", insured_name: "Acme Corp" })]);
+    renderDashboard();
+
+    const link = await screen.findByRole("link", { name: "Acme Corp" });
+    expect(link).toHaveAttribute("href", "/orders/ord-42");
+  });
+
   it("shows an empty state when there are no orders", async () => {
     mockFetch([]);
-    render(<Dashboard />);
+    renderDashboard();
     expect(
       await screen.findByText(/no inspection orders yet/i),
     ).toBeInTheDocument();

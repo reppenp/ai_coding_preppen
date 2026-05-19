@@ -117,11 +117,13 @@ That way each phase fits in a focused session — no full-repo loads, no thrashi
 - Partially saved form reloads saved state on page refresh (component test)
 
 **Done-when:**
-- [ ] John can open an order, fill in fields across all 4 sections, and submit.
-- [ ] Refreshing the page mid-inspection reloads the saved state.
-- [ ] Order status changes to "Submitted" on the Dashboard after submit.
-- [ ] All form API tests pass.
-- [ ] `npm test` passes.
+- [x] John can open an order, fill in fields across all 4 sections, and submit. _(InspectionForm.tsx: stepped 4-section form + ProgressIndicator + per-section FormSection; route `/orders/:id` wired in main.tsx. Dashboard insured-name cells now link to `/orders/:id` so John reaches the form by clicking.)_
+- [x] Refreshing the page mid-inspection reloads the saved state. _(GET /api/orders/:id/form on mount → normalized into controls; covered by InspectionForm.test.tsx "reloads previously saved state".)_
+- [x] Order status changes to "Submitted" on the Dashboard after submit. _(submitForm → navigate("/"); Dashboard reads status from GET /api/orders. Status badge also reflects Ordered → In Progress in the form header after first save.)_
+- [x] All form API tests pass. _(forms.test.ts: 13/13.)_
+- [x] `npm test` passes. _(28/28 across workers + client; `npm run typecheck` and `npm run build` also green.)_
+
+**Scope note:** `Dashboard.tsx` (not in this phase's original file list) got one change — the insured-name cell is now a `<Link>` to `/orders/:id` so John can actually reach the form. Approved by the developer in-session. Logged below.
 
 **Session budget:** 2 sessions.
 
@@ -207,6 +209,8 @@ That way each phase fits in a focused session — no full-repo loads, no thrashi
 | 2026-05-16 | Phase 1 | Split tests into a vitest **workspace**: `workers` (pool) + `client` (jsdom). Added @testing-library/* + jsdom dev deps | The Workers pool can't render React; component tests in BUILDPLAN need a DOM. Approved by developer. |
 | 2026-05-16 | Phase 1 / Phase 2 | Migration `0002` adds `inspections.property_use` (nullable) | PRD §4 story 1 requires "property use"; Phase 0 schema omitted it. DB stays permissive (PRD §8 Risk 4 still open); form requires it at UI layer. |
 | 2026-05-19 | Phase 2 | **Risk 4 resolved.** Canonical form field list + 8-field required-to-submit set defined (PRD §5) via field-by-field developer interview. Migration `0003_finalize_form_responses` aligns `form_responses` to it. | Phase 2 prerequisite. Provisional Phase-0 columns replaced by a defined spec; "required" is an API/UI submit-gate, columns stay nullable per Risk 1. |
+| 2026-05-19 | Phase 2 | Phase 2 UI built. Auto-save risk resolved in favour of **explicit per-section "Save section"** (not blur-debounce). `api.ts` extended with `loadForm`/`saveFormSection`/`submitForm` (not in the file list — follows the existing thin-wrapper precedent). | Explicit save maps 1:1 to PUT .../form and makes save state obvious to John in poor connectivity (PRD §8 Risk 1) — the option the phase's risk note recommended. |
+| 2026-05-19 | Phase 2 | `Dashboard.tsx` insured-name cell made a `<Link>` to `/orders/:id` (file outside the phase's list). Dashboard tests wrapped in `MemoryRouter` + a link-href assertion added. | Without it the form was reachable only by typing a URL — "John can open an order" was not really met. Developer approved expanding scope by this one cell. |
 
 ---
 

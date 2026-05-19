@@ -5,6 +5,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { Link } from "react-router-dom";
 import { listOrders, type Order } from "../api";
 import { StatusBadge } from "../components/StatusBadge";
 
@@ -37,7 +38,20 @@ function cycleTime(o: Order): string {
 
 const col = createColumnHelper<Order>();
 const columns = [
-  col.accessor("insured_name", { header: "Insured" }),
+  col.accessor("insured_name", {
+    header: "Insured",
+    // The insured name is the row's entry point into its inspection form
+    // (Phase 2, /orders/:id). A real <Link> — keyboard-focusable with a
+    // visible focus ring (a11y floor §5), not a row onClick.
+    cell: (c) => (
+      <Link
+        to={`/orders/${c.row.original.id}`}
+        className="font-medium text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
+      >
+        {c.getValue()}
+      </Link>
+    ),
+  }),
   col.accessor("property_address", { header: "Property" }),
   col.accessor("status", {
     header: "Status",

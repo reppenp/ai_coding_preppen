@@ -8,11 +8,12 @@ import {
 import { Nav } from "./components/Nav";
 import { Dashboard } from "./pages/Dashboard";
 import { NewOrder } from "./pages/NewOrder";
+import { InspectionForm } from "./pages/InspectionForm";
 import "./index.css";
 
-// Routes mirror DESIGN.md §2's IA exactly. /orders/:id (Phase 2) and /review
-// (Phase 4) are placeholders so the nav + router are complete now and those
-// phases only swap the element, not the routing.
+// Routes mirror DESIGN.md §2's IA exactly. /orders/:id is the inspection form
+// (Phase 2); /review (Phase 4) is still a placeholder so the nav + router stay
+// complete and that phase only swaps the element, not the routing.
 function Layout() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -40,10 +41,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Dashboard /> },
       { path: "orders/new", element: <NewOrder /> },
-      {
-        path: "orders/:id",
-        element: <ComingSoon title="Inspection Form" />,
-      },
+      { path: "orders/:id", element: <InspectionForm /> },
       { path: "review", element: <ComingSoon title="Review Queue" /> },
       { path: "*", element: <ComingSoon title="Page not found" /> },
     ],
