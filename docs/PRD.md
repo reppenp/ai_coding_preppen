@@ -71,31 +71,65 @@ Three internal users. No external (property owner) access in v1.
 
 ## 5. Inspection form structure
 
-The inspection form (Story 2) covers four sections, identical for all commercial property types in v1:
+The inspection form (Story 2) covers four sections, identical for all commercial property types in v1.
+
+**Field spec (resolves Risk 4 — see §8).** The tables below are the canonical field list. "Required to submit" is enforced at the **API/UI layer** at final submit (`POST /api/orders/:id/submit`), **not** as a D1 `NOT NULL` constraint: per Risk 1, John saves a section at a time in poor connectivity, so every `form_responses` column stays nullable and partial saves never fail. The required set is deliberately lean (8 fields) — the high-severity signals an underwriter cannot accept a risk without — so the form does not slow John in the field. Condition fields are `Good / Fair / Poor / N-A` enums; presence/adequacy items are booleans; notes/describe fields are free text and always optional.
+
+**Required-to-submit set (8):** `roof_condition`, `foundation_condition`, `electrical_condition`, `fire_exits_adequate`, `hazardous_materials_present`, `fire_suppression_present`, `occupancy_type`, `high_risk_processes_present`.
 
 ### Section 1 — Building Structure & Maintenance
-- Roof condition, age, and materials
-- Exterior walls, foundations, and windows
-- HVAC systems, plumbing, and electrical infrastructure
+
+| Field | Type | Required to submit |
+|---|---|---|
+| `roof_condition` | enum: Good / Fair / Poor / N-A | **Yes** |
+| `roof_age_years` | integer | No |
+| `roof_materials` | text | No |
+| `exterior_walls_condition` | enum: Good / Fair / Poor / N-A | No |
+| `foundation_condition` | enum: Good / Fair / Poor / N-A | **Yes** |
+| `windows_condition` | enum: Good / Fair / Poor / N-A | No |
+| `hvac_condition` | enum: Good / Fair / Poor / N-A | No |
+| `plumbing_condition` | enum: Good / Fair / Poor / N-A | No |
+| `electrical_condition` | enum: Good / Fair / Poor / N-A | **Yes** |
+| `section1_notes` | text | No |
 
 ### Section 2 — Safety & Risk Management
-- Fire exits, signage, and accessibility
-- Security systems (cameras, lighting, alarms)
-- Storage practices, especially for hazardous materials
-- Slip, trip, and fall prevention measures
-- Presence of fire suppression or containment systems (kitchens, mechanical rooms)
+
+| Field | Type | Required to submit |
+|---|---|---|
+| `fire_exits_adequate` | boolean | **Yes** |
+| `fire_exits_notes` | text | No |
+| `security_systems_present` | boolean | No |
+| `security_systems` | text (cameras / lighting / alarms detail) | No |
+| `hazardous_materials_present` | boolean | **Yes** |
+| `hazardous_materials_storage` | text (storage practices) | No |
+| `slip_trip_fall_adequate` | boolean | No |
+| `slip_trip_fall_notes` | text | No |
+| `fire_suppression_present` | boolean | **Yes** |
+| `fire_suppression_systems` | text (describe) | No |
+| `section2_notes` | text | No |
 
 ### Section 3 — Occupancy & Usage
-- Type of businesses or tenants operating on-site
-- Whether the building is owner-occupied, leased, or multi-tenant
-- Volume of foot traffic or customer activity
-- Use of high-risk equipment or processes (welding, cooking, manufacturing)
+
+| Field | Type | Required to submit |
+|---|---|---|
+| `tenant_types` | text | No |
+| `occupancy_type` | enum: Owner-occupied / Leased / Multi-tenant | **Yes** |
+| `foot_traffic_volume` | enum: Low / Medium / High | No |
+| `high_risk_processes_present` | boolean (welding, cooking, manufacturing, …) | **Yes** |
+| `high_risk_processes` | text (describe) | No |
+| `section3_notes` | text | No |
 
 ### Section 4 — Liability Exposures
-- Parking lot and sidewalk conditions
-- ADA compliance
-- Safety protocols for public-facing areas
-- Tenant or employee safety training programs
+
+| Field | Type | Required to submit |
+|---|---|---|
+| `parking_sidewalk_condition` | enum: Good / Fair / Poor / N-A | No |
+| `ada_compliant` | boolean | No |
+| `ada_notes` | text | No |
+| `public_safety_protocols` | text | No |
+| `safety_training_present` | boolean | No |
+| `safety_training_programs` | text (describe) | No |
+| `section4_notes` | text | No |
 
 ---
 
@@ -139,7 +173,7 @@ The inspection form (Story 2) covers four sections, identical for all commercial
 
 3. **Catastrophe volume spikes (Medium):** John's volume can jump from 5/week to 5/day during a major event. The system should handle this gracefully, but load testing should be considered before any catastrophe-season launch.
 
-4. **Form completeness and validation (Low):** What fields are required vs. optional on the inspection form? An incomplete submission could create downstream problems for Kelly. Define required fields before building the form.
+4. **Form completeness and validation (Low) — RESOLVED 2026-05-19:** What fields are required vs. optional on the inspection form? An incomplete submission could create downstream problems for Kelly. **Resolved:** the canonical field list, types, and the 8-field required-to-submit set are now defined in §5. "Required" is enforced at the API/UI submit gate, not as a DB constraint (D1 stays nullable per Risk 1 so partial saves never fail).
 
 ---
 

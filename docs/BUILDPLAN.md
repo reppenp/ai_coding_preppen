@@ -3,8 +3,8 @@
 _This file is the phased build plan for the project. It's the bridge between `docs/PRD.md` (what to build) + `docs/DESIGN.md` (what it looks like) and the actual code. Fill it out with the `build-plan` skill after the PRD and design brief are stable. Re-run the skill whenever reality has diverged from the plan._
 
 > **Status:** Draft
-> **Last updated:** 2026-05-16
-> **Current phase:** Phase 2 (Phases 0–1 complete)
+> **Last updated:** 2026-05-19
+> **Current phase:** Phase 2 (Phases 0–1 complete; Phase 2 prerequisite Risk 4 resolved)
 
 ---
 
@@ -127,7 +127,7 @@ That way each phase fits in a focused session — no full-repo loads, no thrashi
 
 **Risks / unknowns:** Auto-save strategy — debounce on field blur vs. explicit "Save section" button. The PRD says save must not lose work on connectivity loss; consider explicit save button per section to make the save state obvious to John.
 
-**⚠️ Prerequisite — KNOWN DEBT carried from Phase 0:** `form_responses`' columns are provisional best-guesses off PRD §5 topics (see the ⚠️ block atop `src/db/schema.sql`). **PRD §8 Risk 4 (define required vs. optional form fields) is still OPEN and MUST be resolved before this phase's form work** — otherwise the field list, column names/types, and required flags are guesses. Expect `ALTER TABLE` migrations (new numbered migration files, not edits to `0001`) once the real fields are defined.
+**✅ Prerequisite RESOLVED 2026-05-19 — PRD §8 Risk 4 closed:** the canonical `form_responses` field list, types, and the 8-field required-to-submit set are now defined in **PRD §5** (resolved via a field-by-field developer interview). "Required" is an API/UI submit-gate, not a DB constraint — every column stays nullable per Risk 1. The migration aligning `form_responses` to that spec is a new numbered file (not an edit to `0001`/`0002`); see the Decision log row below. Form work in this phase MUST follow PRD §5, not the old provisional column guesses.
 
 ---
 
@@ -206,6 +206,7 @@ That way each phase fits in a focused session — no full-repo loads, no thrashi
 | 2026-05-16 | Phase 1 | Added `react-router-dom` (runtime dep) | Routing across `/`, `/orders/new`; `/orders/:id` & `/review` stubbed for Phases 2/4. Approved by developer. |
 | 2026-05-16 | Phase 1 | Split tests into a vitest **workspace**: `workers` (pool) + `client` (jsdom). Added @testing-library/* + jsdom dev deps | The Workers pool can't render React; component tests in BUILDPLAN need a DOM. Approved by developer. |
 | 2026-05-16 | Phase 1 / Phase 2 | Migration `0002` adds `inspections.property_use` (nullable) | PRD §4 story 1 requires "property use"; Phase 0 schema omitted it. DB stays permissive (PRD §8 Risk 4 still open); form requires it at UI layer. |
+| 2026-05-19 | Phase 2 | **Risk 4 resolved.** Canonical form field list + 8-field required-to-submit set defined (PRD §5) via field-by-field developer interview. Migration `0003_finalize_form_responses` aligns `form_responses` to it. | Phase 2 prerequisite. Provisional Phase-0 columns replaced by a defined spec; "required" is an API/UI submit-gate, columns stay nullable per Risk 1. |
 
 ---
 

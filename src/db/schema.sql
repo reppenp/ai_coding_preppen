@@ -9,12 +9,12 @@
 -- note) to avoid a migration mid-build:
 --   Ordered → In Progress → Submitted → Reviewed
 --
--- ⚠️ KNOWN DEBT — form_responses columns are PROVISIONAL best-guesses derived
--- from PRD §5 topic bullets, NOT a defined field list. PRD §8 Risk 4 ("define
--- required fields before building the form") is still OPEN. Column names,
--- types, and required/optional status WILL change in Phase 2 and will require
--- ALTER TABLE migrations. This was a deliberate, eyes-open trade (chosen over
--- a JSON blob and over defining fields first). Resolve Risk 4 before Phase 2.
+-- form_responses is the FINALIZED field list (PRD §8 Risk 4 RESOLVED
+-- 2026-05-19). The canonical field list, types, and the 8-field
+-- required-to-submit set live in PRD §5; this table is kept in sync with
+-- migration 0003_finalize_form_responses. Every answer column stays NULLABLE
+-- on purpose: "required" is an API/UI submit-gate (POST .../submit), not a DB
+-- constraint, so per-section saves in poor connectivity never fail (Risk 1).
 
 -- Inspection orders. Jeff creates these; everyone sees them on the dashboard.
 CREATE TABLE IF NOT EXISTS inspections (
@@ -45,7 +45,9 @@ CREATE INDEX IF NOT EXISTS idx_inspections_status ON inspections (status);
 -- save an idempotent upsert: INSERT ... ON CONFLICT(inspection_id) DO UPDATE
 -- touching only that section's columns, safe under connection retries.
 --
--- Columns mirror PRD §5's four sections. PROVISIONAL — see KNOWN DEBT above.
+-- Columns are the finalized PRD §5 field list; kept in sync with migration
+-- 0003_finalize_form_responses. Booleans use INTEGER CHECK (… IN (0, 1));
+-- condition/volume enums are plain TEXT (enum enforced at the API/UI layer).
 CREATE TABLE IF NOT EXISTS form_responses (
   id            TEXT PRIMARY KEY,
   inspection_id TEXT NOT NULL UNIQUE REFERENCES inspections (id) ON DELETE CASCADE,
@@ -60,27 +62,37 @@ CREATE TABLE IF NOT EXISTS form_responses (
   hvac_condition            TEXT,
   plumbing_condition        TEXT,
   electrical_condition      TEXT,
+  section1_notes            TEXT,
 
   -- Section 2 — Safety & Risk Management
   fire_exits_adequate         INTEGER CHECK (fire_exits_adequate IN (0, 1)),
   fire_exits_notes            TEXT,
+  security_systems_present    INTEGER CHECK (security_systems_present IN (0, 1)),
   security_systems            TEXT,
+  hazardous_materials_present INTEGER CHECK (hazardous_materials_present IN (0, 1)),
   hazardous_materials_storage TEXT,
-  slip_trip_fall_measures     TEXT,
+  slip_trip_fall_adequate     INTEGER CHECK (slip_trip_fall_adequate IN (0, 1)),
+  slip_trip_fall_notes        TEXT,
+  fire_suppression_present    INTEGER CHECK (fire_suppression_present IN (0, 1)),
   fire_suppression_systems    TEXT,
+  section2_notes              TEXT,
 
   -- Section 3 — Occupancy & Usage
-  tenant_types       TEXT,
-  occupancy_type     TEXT CHECK (occupancy_type IN ('Owner-occupied', 'Leased', 'Multi-tenant')),
-  foot_traffic_volume TEXT,
-  high_risk_processes TEXT,
+  tenant_types                TEXT,
+  occupancy_type              TEXT CHECK (occupancy_type IN ('Owner-occupied', 'Leased', 'Multi-tenant')),
+  foot_traffic_volume         TEXT,
+  high_risk_processes_present INTEGER CHECK (high_risk_processes_present IN (0, 1)),
+  high_risk_processes         TEXT,
+  section3_notes              TEXT,
 
   -- Section 4 — Liability Exposures
   parking_sidewalk_condition TEXT,
   ada_compliant              INTEGER CHECK (ada_compliant IN (0, 1)),
   ada_notes                  TEXT,
   public_safety_protocols    TEXT,
+  safety_training_present    INTEGER CHECK (safety_training_present IN (0, 1)),
   safety_training_programs   TEXT,
+  section4_notes             TEXT,
 
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
