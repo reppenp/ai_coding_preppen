@@ -15,6 +15,7 @@ import {
   type SectionStatus,
 } from "../components/ProgressIndicator";
 import { FormSection, type SaveState } from "../components/FormSection";
+import { PhotoUploader } from "../components/PhotoUploader";
 
 // Story 2: John opens an assigned order and completes the 4-section field
 // inspection. Stepped layout + progress rail (DESIGN.md §7) so a long form
@@ -369,6 +370,9 @@ export function InspectionForm() {
             onChange={(v) => setField(def.name, v)}
           />
         ))}
+        {/* Photos attach per section (PRD §7). Keyed by section so switching
+            sections remounts a fresh uploader scoped to that section. */}
+        <PhotoUploader key={active} inspectionId={id} section={active + 1} />
       </FormSection>
 
       <div className="flex items-center justify-between">

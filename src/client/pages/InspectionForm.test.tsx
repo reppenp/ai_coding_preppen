@@ -64,6 +64,18 @@ function mockApi({ form = {}, submitMissing }: Handlers = {}) {
         json: async () => ({ ok: true, status: "Submitted" }),
       };
     }
+    // Phase 3: the form now mounts a PhotoUploader per section, which fetches
+    // its section's photos on mount. Phase 2 specs don't exercise photos —
+    // return an empty grouping so those flows are unaffected.
+    if (method === "GET" && url.endsWith("/photos")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          bySection: { "1": [], "2": [], "3": [], "4": [] },
+        }),
+      };
+    }
     throw new Error(`unexpected fetch: ${method} ${url}`);
   });
   vi.stubGlobal("fetch", fetchMock);

@@ -98,6 +98,26 @@ CREATE TABLE IF NOT EXISTS form_responses (
 );
 -- No separate index on inspection_id: UNIQUE(inspection_id) already indexes it.
 
+-- Section photos (Phase 3, PRD §4 story 6 / §7). Kept in sync with migration
+-- 0004_add_photos. The image BYTES live in R2 (binding PHOTOS); this table is
+-- metadata + the r2_key pointer only. Upload is proxied through the Worker
+-- per photo (not presigned / not batched) — one atomic retryable request,
+-- the right fit for John's poor-connectivity field work (PRD §8 Risk 1).
+-- FK is `inspection_id` (consistent with form_responses/decisions). section is
+-- 1..4 to match the "Section N of 4" UI. No DELETE in v1; CASCADE only.
+CREATE TABLE IF NOT EXISTS photos (
+  id            TEXT PRIMARY KEY,
+  inspection_id TEXT NOT NULL REFERENCES inspections (id) ON DELETE CASCADE,
+  section       INTEGER NOT NULL CHECK (section IN (1, 2, 3, 4)),
+  r2_key        TEXT NOT NULL UNIQUE,
+  filename      TEXT,
+  content_type  TEXT,
+  size_bytes    INTEGER,
+  uploaded_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_photos_inspection ON photos (inspection_id);
+
 -- Underwriter decisions. Kelly records one per inspection after review.
 CREATE TABLE IF NOT EXISTS decisions (
   id            TEXT PRIMARY KEY,
