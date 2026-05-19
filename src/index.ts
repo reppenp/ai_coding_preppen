@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import orders from "./routes/orders";
+import forms from "./routes/forms";
 
 /**
  * Cloudflare bindings available to the Worker. Declared in wrangler.toml.
@@ -19,7 +20,10 @@ const app = new Hono<{ Bindings: Env }>();
 // end to end before any feature code lands.
 app.get("/health", (c) => c.json({ status: "ok" }));
 
-// Feature API. Everything the SPA talks to lives under /api.
+// Feature API. Everything the SPA talks to lives under /api. `orders` owns
+// the collection routes (/api/orders); `forms` owns the per-order inspection
+// routes (/api/orders/:id/form, /:id/submit). No path overlap between them.
 app.route("/api/orders", orders);
+app.route("/api/orders", forms);
 
 export default app;
