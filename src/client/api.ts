@@ -115,6 +115,54 @@ export class SubmitIncompleteError extends Error {
   }
 }
 
+// ─── Section photos (Phase 3, Story 6) ─────────────────────────────────────
+// Wraps POST/GET /api/orders/:id/photos. Upload is multipart (the file is
+// proxied through the Worker to R2); listing comes back grouped by section.
+
+export interface Photo {
+  id: string;
+  section: number;
+  filename: string | null;
+  content_type: string | null;
+  size_bytes: number | null;
+  uploaded_at: string;
+  /** Worker route that streams the image bytes — point an <img src> at it. */
+  url: string;
+}
+
+/** All of an order's photos, grouped by section ("1".."4" always present). */
+export async function listPhotos(
+  id: string,
+): Promise<Record<string, Photo[]>> {
+  const res = await fetch(`/api/orders/${id}/photos`);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Failed to load photos (${res.status})`);
+  }
+  return ((await res.json()) as { bySection: Record<string, Photo[]> })
+    .bySection;
+}
+
+/** Upload one photo to a section (1..4). Returns the created photo. */
+export async function uploadPhoto(
+  id: string,
+  section: number,
+  file: File,
+): Promise<Photo> {
+  const fd = new FormData();
+  fd.set("section", String(section));
+  fd.set("file", file);
+  const res = await fetch(`/api/orders/${id}/photos`, {
+    method: "POST",
+    body: fd,
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Failed to upload photo (${res.status})`);
+  }
+  return (await res.json()) as Photo;
+}
+
 export async function submitForm(
   id: string,
 ): Promise<{ ok: true; status: OrderStatus }> {

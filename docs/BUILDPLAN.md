@@ -4,7 +4,7 @@ _This file is the phased build plan for the project. It's the bridge between `do
 
 > **Status:** Draft
 > **Last updated:** 2026-05-19
-> **Current phase:** Phase 2 (Phases 0–1 complete; Phase 2 prerequisite Risk 4 resolved)
+> **Current phase:** Phase 4 (Phases 0–3 complete). Phase 3 deploy prerequisite **RESOLVED 2026-05-19**: R2 enabled on the account, bucket `inspection-photos` created, and remote D1 migrated. The original "token lacks `r2` scope" framing was a **misdiagnosis** — Wrangler 4.92 has no `r2` OAuth scope; the real gate was account-level R2 enablement (dashboard), plus the remote D1 had **never** been migrated (Phase 0 ran local only). Remote D1 now holds the full schema (`inspections`, `form_responses`, `decisions`, `photos`). Repo is deployable; `npm run deploy` not yet run.
 
 ---
 
@@ -152,15 +152,15 @@ That way each phase fits in a focused session — no full-repo loads, no thrashi
 - PhotoUploader renders, accepts a file, and fires the upload handler (component test)
 
 **Done-when:**
-- [ ] John can drag-and-drop or browse to attach a photo to any section.
-- [ ] Photos appear in the section after upload (no page refresh needed).
-- [ ] Photos are stored in R2; keys are recorded in D1.
-- [ ] All photo API tests pass.
-- [ ] `npm test` passes.
+- [x] John can drag-and-drop or browse to attach a photo to any section. _(PhotoUploader.tsx: drop zone + keyboard-accessible `<input type=file>` / "Choose photos" button, mounted per active section in InspectionForm.tsx scoped to `active + 1`.)_
+- [x] Photos appear in the section after upload (no page refresh needed). _(uploadPhoto → returned Photo appended to state; covered by PhotoUploader.test.tsx "shows the photo without a refresh".)_
+- [x] Photos are stored in R2; keys are recorded in D1. _(POST proxies bytes → `env.PHOTOS.put`, then inserts the `photos` row with `r2_key`; photos.test.ts asserts the bytes are retrievable from the R2 binding under the returned key.)_
+- [x] All photo API tests pass. _(photos.test.ts: 9/9 — upload 201/r2_key, 404/400 guards, grouped list, raw byte stream.)_
+- [x] `npm test` passes. _(41/41 across workers + client; `npm run typecheck` and `npm run build` also green; migration 0004 applied to local D1.)_
 
 **Session budget:** 1–2 sessions.
 
-**Risks / unknowns:** R2 presigned URL vs. proxied upload through the Worker — decide before coding. Proxied upload is simpler but adds CPU time and Worker size pressure; presigned URL is better long-term but requires more setup. Flag if file sizes exceed Worker request limits.
+**Risks / unknowns:** R2 presigned URL vs. proxied upload through the Worker — decide before coding. Proxied upload is simpler but adds CPU time and Worker size pressure; presigned URL is better long-term but requires more setup. Flag if file sizes exceed Worker request limits. _Resolved: **proxied** chosen — v1 is a handful of phone photos per section, uploaded per-section (PRD §7); one atomic retryable request fits John's poor-connectivity field work (Risk 1) with no presign-expiry to manage. Implementation guards proxied size at 15 MB (PRD §7 sets no product limit); revisit presigned only if real usage needs larger files. **Deploy prerequisite (open):** the OAuth token still lacks the `r2` scope — tests run on simulated R2, but remote `wrangler deploy` needs re-auth-with-R2 or a dashboard-created bucket first._
 
 ---
 
@@ -211,6 +211,11 @@ That way each phase fits in a focused session — no full-repo loads, no thrashi
 | 2026-05-19 | Phase 2 | **Risk 4 resolved.** Canonical form field list + 8-field required-to-submit set defined (PRD §5) via field-by-field developer interview. Migration `0003_finalize_form_responses` aligns `form_responses` to it. | Phase 2 prerequisite. Provisional Phase-0 columns replaced by a defined spec; "required" is an API/UI submit-gate, columns stay nullable per Risk 1. |
 | 2026-05-19 | Phase 2 | Phase 2 UI built. Auto-save risk resolved in favour of **explicit per-section "Save section"** (not blur-debounce). `api.ts` extended with `loadForm`/`saveFormSection`/`submitForm` (not in the file list — follows the existing thin-wrapper precedent). | Explicit save maps 1:1 to PUT .../form and makes save state obvious to John in poor connectivity (PRD §8 Risk 1) — the option the phase's risk note recommended. |
 | 2026-05-19 | Phase 2 | `Dashboard.tsx` insured-name cell made a `<Link>` to `/orders/:id` (file outside the phase's list). Dashboard tests wrapped in `MemoryRouter` + a link-href assertion added. | Without it the form was reachable only by typing a URL — "John can open an order" was not really met. Developer approved expanding scope by this one cell. |
+| 2026-05-19 | Phase 3 | **Upload strategy = proxied through the Worker** (not presigned). Size guarded at 15 MB in `photos.ts`. | The Phase 3 risk required deciding before coding. v1 is a few phone photos per section, per-section not batched (PRD §7); one atomic retryable request best fits poor connectivity (Risk 1). Presigned deferred until large-file/high-volume need. |
+| 2026-05-19 | Phase 3 | Migration `0004_add_photos.sql` (new file, not an edit) creates `photos`. FK named `inspection_id`, **not** the BUILDPLAN sketch's "order_id"; `section INTEGER CHECK (1–4)`. | Established Phase 1/2 precedent: a committed migration is never edited. `inspection_id` keeps the column name consistent with `form_responses`/`decisions` (an order *is* an inspection row). |
+| 2026-05-19 | Phase 3 | Added a 3rd route not in the file list: `GET /api/orders/:id/photos/:photoId` streams the R2 object. | R2 objects are private; the SPA `<img>` needs a Worker-served URL to render them — "photos appear in the section" is unmet without it. Same precedent as the Phase 2 Dashboard `<Link>` (necessary, in-scope consequence). |
+| 2026-05-19 | Phase 3 | `wrangler.toml` R2 binding uncommented + `PHOTOS: R2Bucket` added to `Env`. `api.ts` extended with `listPhotos`/`uploadPhoto`; `InspectionForm.test.tsx` mock patched to answer the new on-mount `/photos` GET. | Required to wire R2 (tests use miniflare's simulated bucket). `api.ts` follows the existing thin-wrapper precedent; the mock patch keeps Phase 2 specs green now that the form fetches photos. |
+| 2026-05-19 | Phase 3 / infra | Deploy prerequisite resolved: developer enabled R2 on the account (dashboard); created bucket `inspection-photos`; applied D1 migrations `--remote` (0001–0004). Corrected the long-standing "token has no `r2` scope" note — Wrangler 4.92 exposes **no** `r2` OAuth scope; R2 is gated at the account level, and the remote D1 had never been migrated (Phase 0 was local-only). | Unblocks remote deploy of photo storage. Institutional note for Phase 4+: remote D1 is now in sync with local/migrations; the first remote migration also created `inspections`/`form_responses`/`decisions` for the first time. |
 
 ---
 

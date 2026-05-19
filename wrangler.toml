@@ -11,13 +11,13 @@ database_name = "inspections"
 database_id = "0b40f043-a5ca-40e5-8697-f63f980ba4d6"
 migrations_dir = "migrations"
 
-# Photo storage (Phase 3). The current OAuth token has no `r2` scope, so this
-# binding is intentionally commented out — enabling it now would fail
-# `wrangler deploy`. Before Phase 3: re-auth with R2 enabled (or create the
-# bucket in the dashboard), then uncomment.
-# [[r2_buckets]]
-# binding = "PHOTOS"
-# bucket_name = "inspection-photos"
+# Photo storage (Phase 3). Tests simulate this bucket in-memory via miniflare,
+# so `npm test` needs no real R2. DEPLOY PREREQUISITE: `wrangler deploy` needs
+# an OAuth token with the `r2` scope OR the `inspection-photos` bucket created
+# in the Cloudflare dashboard first — otherwise deploy fails on this binding.
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "inspection-photos"
 
 # React SPA build output (Phase 1). `npm run build` (vite) emits ./dist/client.
 # Workers serves a matching static file if present, else invokes the Worker;
