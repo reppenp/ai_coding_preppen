@@ -7,10 +7,13 @@ import {
 } from "@tanstack/react-table";
 import { Link } from "react-router-dom";
 import { listOrders, type Order } from "../api";
-import { StatusBadge } from "../components/StatusBadge";
 
-// The hero screen (DESIGN.md §2): in 3 seconds, "here are all inspections and
-// where they stand." Data-dense table, shared by all three users.
+// Phase 4 — Story 3: Kelly's queue of inspections waiting to be decided.
+//
+// The queue shows only orders with status 'Submitted'. Reviewed orders are
+// still visible on the shared Dashboard (PRD §4 story 5) but aren't part of
+// Kelly's "to-do" list, so they're filtered out here. Same TanStack-Table
+// layout as Dashboard.tsx — Kelly already knows that table shape.
 
 /** SQLite datetime('now') is "YYYY-MM-DD HH:MM:SS" UTC. Show just the date. */
 function formatDate(value: string | null): string {
@@ -25,25 +28,14 @@ function formatDate(value: string | null): string {
       });
 }
 
-/** Cycle time in whole days (created → decided). The math lives on the server
- *  (orders.ts SQL) so every client sees the same number; here we just format
- *  null/undefined as "—". PRD §4 story 4. */
-function cycleTime(o: Order): string {
-  return o.cycle_time_days === null || o.cycle_time_days === undefined
-    ? "—"
-    : `${o.cycle_time_days} d`;
-}
-
 const col = createColumnHelper<Order>();
 const columns = [
   col.accessor("insured_name", {
     header: "Insured",
-    // The insured name is the row's entry point into its inspection form
-    // (Phase 2, /orders/:id). A real <Link> — keyboard-focusable with a
-    // visible focus ring (a11y floor §5), not a row onClick.
+    // Each row links into the per-inspection review view (Phase 4).
     cell: (c) => (
       <Link
-        to={`/orders/${c.row.original.id}`}
+        to={`/review/${c.row.original.id}`}
         className="font-medium text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
       >
         {c.getValue()}
@@ -51,22 +43,17 @@ const columns = [
     ),
   }),
   col.accessor("property_address", { header: "Property" }),
-  col.accessor("status", {
-    header: "Status",
-    cell: (c) => <StatusBadge status={c.getValue()} />,
+  col.accessor("property_use", {
+    header: "Use",
+    cell: (c) => c.getValue() ?? "—",
   }),
-  col.accessor("created_at", {
-    header: "Created",
+  col.accessor("submitted_at", {
+    header: "Submitted",
     cell: (c) => formatDate(c.getValue()),
-  }),
-  col.display({
-    id: "cycle_time",
-    header: "Cycle time",
-    cell: (c) => cycleTime(c.row.original),
   }),
 ];
 
-export function Dashboard() {
+export function ReviewQueue() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,21 +61,26 @@ export function Dashboard() {
     listOrders()
       .then(setOrders)
       .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : "Failed to load orders"),
+        setError(e instanceof Error ? e.message : "Failed to load queue"),
       );
   }, []);
 
+  const submitted = (orders ?? []).filter((o) => o.status === "Submitted");
+
   const table = useReactTable({
-    data: orders ?? [],
+    data: submitted,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
 
   return (
     <section>
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900">
-        Inspection Orders
+      <h1 className="mb-2 text-2xl font-semibold text-gray-900">
+        Review Queue
       </h1>
+      <p className="mb-6 text-sm text-gray-600">
+        Submitted inspections waiting for an underwriting decision.
+      </p>
 
       {error && (
         <p
@@ -100,17 +92,16 @@ export function Dashboard() {
       )}
 
       {!error && orders === null && (
-        <p className="text-gray-600">Loading orders…</p>
+        <p className="text-gray-600">Loading queue…</p>
       )}
 
-      {!error && orders !== null && orders.length === 0 && (
+      {!error && orders !== null && submitted.length === 0 && (
         <div className="rounded-md bg-white p-8 text-center text-gray-600 shadow-sm">
-          No inspection orders yet. Create one from{" "}
-          <span className="font-medium text-gray-900">New Order</span>.
+          Nothing in the queue right now. New submissions will appear here.
         </div>
       )}
 
-      {!error && orders !== null && orders.length > 0 && (
+      {!error && submitted.length > 0 && (
         <div className="overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-gray-300">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-gray-300 bg-gray-50 text-gray-600">

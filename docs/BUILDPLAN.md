@@ -4,7 +4,7 @@ _This file is the phased build plan for the project. It's the bridge between `do
 
 > **Status:** Draft
 > **Last updated:** 2026-05-19
-> **Current phase:** Phase 4 (Phases 0–3 complete). Phase 3 deploy prerequisite **RESOLVED 2026-05-19**: R2 enabled on the account, bucket `inspection-photos` created, and remote D1 migrated. The original "token lacks `r2` scope" framing was a **misdiagnosis** — Wrangler 4.92 has no `r2` OAuth scope; the real gate was account-level R2 enablement (dashboard), plus the remote D1 had **never** been migrated (Phase 0 ran local only). Remote D1 now holds the full schema (`inspections`, `form_responses`, `decisions`, `photos`). Repo is deployable; `npm run deploy` not yet run.
+> **Current phase:** Phase 4 complete (Phases 0–4 done). All Must-have stories (PRD §4 stories 1–5) plus Should story 6 (photos) have green tests — 64/64 across workers + client; `npm run typecheck` and `npm run build` also green. Migration `0005_finalize_decisions` applied to local D1 — **remote D1 still needs `npm run db:migrate:remote`** before the next deploy. Repo otherwise deployable; `npm run deploy` not yet run.
 
 ---
 
@@ -186,16 +186,16 @@ That way each phase fits in a focused session — no full-repo loads, no thrashi
 - ReviewDetail renders inspection form data read-only + decision form (component test)
 
 **Done-when:**
-- [ ] Kelly sees only "Submitted" orders in the Review Queue.
-- [ ] Kelly can add notes, select premium direction and policy action, and submit a decision.
-- [ ] Order status changes to "Reviewed" on the Dashboard after decision.
-- [ ] Cycle time (days) is visible on the Dashboard for completed inspections.
-- [ ] All decision API tests pass.
-- [ ] `npm test` passes.
+- [x] Kelly sees only "Submitted" orders in the Review Queue. _(ReviewQueue.tsx filters `orders.status === "Submitted"`; ReviewQueue.test.tsx asserts Ordered / In Progress / Reviewed are excluded.)_
+- [x] Kelly can add notes, select premium direction and policy action, and submit a decision. _(ReviewDetail.tsx: two radio-group fieldsets + notes textarea + Record-decision button; POST /api/orders/:id/decision; ReviewDetail.test.tsx covers happy path, missing-required guard, and pre-fill from existing decision.)_
+- [x] Order status changes to "Reviewed" on the Dashboard after decision. _(decisions.ts: `UPDATE inspections SET status = 'Reviewed', decided_at = datetime('now')`; decisions.test.ts asserts both the status and decided_at after POST.)_
+- [x] Cycle time (days) is visible on the Dashboard for completed inspections. _(orders.ts computes `cycle_time_days` server-side as `CAST(MAX(0, ROUND(julianday(decided_at) - julianday(created_at))) AS INTEGER)`; Dashboard renders the field; orders.test.ts asserts null pre-decision and the integer day count after.)_
+- [x] All decision API tests pass. _(decisions.test.ts: 12/12.)_
+- [x] `npm test` passes. _(64/64 across workers + client; `npm run typecheck` and `npm run build` also green.)_
 
 **Session budget:** 1–2 sessions.
 
-**Risks / unknowns:** ReviewDetail needs to render the full inspection form data read-only — reuse FormSection components in read-only mode to avoid duplicating the form structure.
+**Risks / unknowns:** ReviewDetail needs to render the full inspection form data read-only — reuse FormSection components in read-only mode to avoid duplicating the form structure. _Resolved: the **field spec** was extracted to `src/client/form-spec.ts` (SECTIONS / FieldDef / normalizeLoaded / formatValue). FormSection itself is editor-specific (save-state footer, dirty/saving/error pill), so the read-only report uses a plain `<dl>` per section that consumes the same spec. The shared piece is the data, not the wrapper — neither view can drift from the other on field add/rename._
 
 ---
 
@@ -216,6 +216,12 @@ That way each phase fits in a focused session — no full-repo loads, no thrashi
 | 2026-05-19 | Phase 3 | Added a 3rd route not in the file list: `GET /api/orders/:id/photos/:photoId` streams the R2 object. | R2 objects are private; the SPA `<img>` needs a Worker-served URL to render them — "photos appear in the section" is unmet without it. Same precedent as the Phase 2 Dashboard `<Link>` (necessary, in-scope consequence). |
 | 2026-05-19 | Phase 3 | `wrangler.toml` R2 binding uncommented + `PHOTOS: R2Bucket` added to `Env`. `api.ts` extended with `listPhotos`/`uploadPhoto`; `InspectionForm.test.tsx` mock patched to answer the new on-mount `/photos` GET. | Required to wire R2 (tests use miniflare's simulated bucket). `api.ts` follows the existing thin-wrapper precedent; the mock patch keeps Phase 2 specs green now that the form fetches photos. |
 | 2026-05-19 | Phase 3 / infra | Deploy prerequisite resolved: developer enabled R2 on the account (dashboard); created bucket `inspection-photos`; applied D1 migrations `--remote` (0001–0004). Corrected the long-standing "token has no `r2` scope" note — Wrangler 4.92 exposes **no** `r2` OAuth scope; R2 is gated at the account level, and the remote D1 had never been migrated (Phase 0 was local-only). | Unblocks remote deploy of photo storage. Institutional note for Phase 4+: remote D1 is now in sync with local/migrations; the first remote migration also created `inspections`/`form_responses`/`decisions` for the first time. |
+| 2026-05-19 | Phase 4 | Migration `0005_finalize_decisions.sql` (new file, not an edit) DROPs the placeholder `decision TEXT NOT NULL` column from 0001 and ADDs `premium_direction` + `policy_action` with CHECK lists mirroring PRD §4 story 3 verbatim (`increase`/`decrease`/`no change`; `approve`/`cancel`/`renew`). Adds `UNIQUE INDEX idx_decisions_inspection_unique` so v1 records one decision per inspection. | The 0001 sketch's `decision TEXT NOT NULL` was never written to and didn't match what Story 3 actually captures. Drop is safe: no Phase up to here inserted a decisions row, and the remote D1 was just freshly seeded (Phase-3 institutional note). UNIQUE-on-`inspection_id` makes POST .../decision an idempotent upsert — same pattern as form_responses, same Risk-1 motivation. |
+| 2026-05-19 | Phase 4 | `decisions.ts` POST guards on `status IN ('Submitted', 'Reviewed')` — an Ordered/In Progress inspection returns 409. | Kelly can only decide on something John has actually submitted; the BUILDPLAN file list didn't call this out, but without the guard a stray POST would mark a half-done form as Reviewed and freeze its decided_at, polluting cycle time. |
+| 2026-05-19 | Phase 4 | `cycle_time_days` computed server-side in `orders.ts` SQL (`CAST(MAX(0, ROUND(julianday(decided_at) - julianday(created_at))) AS INTEGER)`); Dashboard switched from client-side date math to reading the field. `Order` type and Dashboard test fixture updated. | The BUILDPLAN names server-side computation explicitly. Doing it in SQL means every client sees the same number regardless of timezone, the dashboard stays a thin view, and the test asserts the contract directly instead of duplicating the math in the component. |
+| 2026-05-19 | Phase 4 | Extracted `src/client/form-spec.ts` (SECTIONS / FieldDef / ENUM_OPTIONS / normalizeLoaded / formatValue) — not in the phase's file list — and refactored InspectionForm.tsx to import from it. ReviewDetail.tsx reads the same spec. | The Phase 4 risk note said "reuse FormSection components in read-only mode to avoid duplicating the form structure". FormSection is editor-specific (save-state footer); the actually-shared piece is the field spec. Extracting the data, not the wrapper, prevents the editable and read-only views from drifting on any future field add/rename. |
+| 2026-05-19 | Phase 4 | `api.ts` extended (not in file list) with `loadDecision`/`recordDecision` + `Decision`/`DecisionInput`/`PremiumDirection`/`PolicyAction` types. | Same thin-wrapper precedent as Phase 2 (`loadForm`/`saveFormSection`) and Phase 3 (`listPhotos`/`uploadPhoto`) — pages stay about UI. |
+| 2026-05-19 | Phase 4 | `main.tsx` adds `/review/:id` route (not in file list). Nav still points at `/review` (the queue); the detail route is reached by clicking a row. | Mirrors the Phase-2 precedent of `/orders/:id` linked from the Dashboard. Needed so "Kelly can record a decision" is reachable without typing a URL. |
 
 ---
 

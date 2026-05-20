@@ -107,11 +107,24 @@ orders.post("/", async (c) => {
 });
 
 // GET /api/orders — every order, newest first. The Dashboard's data source.
+//
+// `cycle_time_days` (PRD §4 story 4) is computed server-side from
+// decided_at - created_at, rounded to whole days. NULL until the underwriter
+// records a decision. Doing the math in SQL keeps the Dashboard a thin view —
+// every client gets the same number regardless of timezone, and it shows up
+// in the API tests so a regression here is caught directly.
+//
+// julianday() returns a float; the day delta can be fractional, so ROUND it
+// and CAST to INTEGER to drop the decimal SQLite would otherwise return as a
+// real. MAX(0, …) guards against any clock-skew oddity producing a negative.
 orders.get("/", async (c) => {
   const { results } = await c.env.DB.prepare(
     `SELECT id, status, source, insured_name, property_address, property_use,
             contact_name, contact_phone, assigned_inspector,
-            created_at, updated_at, submitted_at, decided_at
+            created_at, updated_at, submitted_at, decided_at,
+            CASE WHEN decided_at IS NULL THEN NULL
+                 ELSE CAST(MAX(0, ROUND(julianday(decided_at) - julianday(created_at))) AS INTEGER)
+            END AS cycle_time_days
        FROM inspections
       ORDER BY created_at DESC`,
   ).all();

@@ -118,14 +118,29 @@ CREATE TABLE IF NOT EXISTS photos (
 
 CREATE INDEX IF NOT EXISTS idx_photos_inspection ON photos (inspection_id);
 
--- Underwriter decisions. Kelly records one per inspection after review.
+-- Underwriter decisions (Phase 4, PRD §4 story 3). Kelly records one per
+-- inspection after reviewing the submitted report. Kept in sync with migration
+-- 0005_finalize_decisions: the old `decision` placeholder column from 0001 has
+-- been DROPped in favor of two structured fields straight from the story —
+-- `premium_direction` (increase / decrease / no change) and `policy_action`
+-- (approve / cancel / renew). Both are nullable in D1; their presence is
+-- enforced at the API layer (POST .../decision), same pattern as form_responses.
+--
+-- UNIQUE(inspection_id) — v1 records one decision per inspection, no re-review
+-- flow. The POST endpoint upserts on this constraint so a retry after a
+-- connectivity blip is idempotent. created_at is the "decided at" timestamp;
+-- cycle time (PRD §4 story 4) reads inspections.decided_at, which the decision
+-- POST writes at the same moment.
 CREATE TABLE IF NOT EXISTS decisions (
-  id            TEXT PRIMARY KEY,
-  inspection_id TEXT NOT NULL REFERENCES inspections (id) ON DELETE CASCADE,
-  decision      TEXT NOT NULL,
-  notes         TEXT,
-  decided_by    TEXT,
-  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+  id                TEXT PRIMARY KEY,
+  inspection_id     TEXT NOT NULL REFERENCES inspections (id) ON DELETE CASCADE,
+  notes             TEXT,
+  premium_direction TEXT CHECK (premium_direction IN ('increase', 'decrease', 'no change')),
+  policy_action     TEXT CHECK (policy_action IN ('approve', 'cancel', 'renew')),
+  decided_by        TEXT,
+  created_at        TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_decisions_inspection ON decisions (inspection_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_decisions_inspection_unique
+  ON decisions (inspection_id);

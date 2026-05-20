@@ -28,6 +28,7 @@ function order(overrides: Partial<Order> = {}): Order {
     updated_at: "2026-05-16 12:00:00",
     submitted_at: null,
     decided_at: null,
+    cycle_time_days: null,
     ...overrides,
   };
 }
@@ -75,5 +76,24 @@ describe("Dashboard", () => {
     expect(
       await screen.findByText(/no inspection orders yet/i),
     ).toBeInTheDocument();
+  });
+
+  it("renders cycle_time_days from the server, '—' until decided", async () => {
+    mockFetch([
+      order({ id: "a", insured_name: "Pending Inc", cycle_time_days: null }),
+      order({
+        id: "b",
+        insured_name: "Done LLC",
+        status: "Reviewed",
+        cycle_time_days: 4,
+      }),
+    ]);
+    renderDashboard();
+
+    expect(await screen.findByText("Pending Inc")).toBeInTheDocument();
+    expect(screen.getByText("Done LLC")).toBeInTheDocument();
+    expect(screen.getByText("4 d")).toBeInTheDocument();
+    // The pending row renders a literal em-dash in the cycle-time cell.
+    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 });

@@ -3,6 +3,7 @@ import {
   createExecutionContext,
   waitOnExecutionContext,
 } from "cloudflare:test";
+// env is used by the cycle_time_days test to backdate created_at via raw SQL.
 import { describe, it, expect } from "vitest";
 import app from "../index";
 
@@ -96,5 +97,43 @@ describe("GET /api/orders", () => {
     expect(found?.status).toBe("Ordered");
     expect(typeof found?.created_at).toBe("string");
     expect(found?.created_at.length).toBeGreaterThan(0);
+  });
+
+  it("returns cycle_time_days = null until a decision is recorded (Phase 4 / PRD §4 story 4)", async () => {
+    const created = (await (await postOrder(validOrder)).json()) as {
+      id: string;
+    };
+
+    const orders = (await (
+      await call(new Request("http://localhost/api/orders"))
+    ).json()) as Array<{ id: string; cycle_time_days: number | null }>;
+
+    const found = orders.find((o) => o.id === created.id);
+    expect(found).toBeDefined();
+    expect(found?.cycle_time_days).toBeNull();
+  });
+
+  it("returns a numeric cycle_time_days once the order has been decided", async () => {
+    const created = (await (await postOrder(validOrder)).json()) as {
+      id: string;
+    };
+    // Backdate created_at by 3 days so the diff is large enough that any
+    // sub-second rounding can't push it back to 0.
+    await env.DB.prepare(
+      `UPDATE inspections
+          SET created_at = datetime('now', '-3 days'),
+              decided_at = datetime('now'),
+              status = 'Reviewed'
+        WHERE id = ?`,
+    )
+      .bind(created.id)
+      .run();
+
+    const orders = (await (
+      await call(new Request("http://localhost/api/orders"))
+    ).json()) as Array<{ id: string; cycle_time_days: number | null }>;
+
+    const found = orders.find((o) => o.id === created.id);
+    expect(found?.cycle_time_days).toBe(3);
   });
 });

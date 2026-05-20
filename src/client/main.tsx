@@ -9,11 +9,13 @@ import { Nav } from "./components/Nav";
 import { Dashboard } from "./pages/Dashboard";
 import { NewOrder } from "./pages/NewOrder";
 import { InspectionForm } from "./pages/InspectionForm";
+import { ReviewQueue } from "./pages/ReviewQueue";
+import { ReviewDetail } from "./pages/ReviewDetail";
 import "./index.css";
 
 // Routes mirror DESIGN.md §2's IA exactly. /orders/:id is the inspection form
-// (Phase 2); /review (Phase 4) is still a placeholder so the nav + router stay
-// complete and that phase only swaps the element, not the routing.
+// (Phase 2). /review (Phase 4) is Kelly's queue of submitted inspections;
+// /review/:id is the per-order review-and-decide page.
 function Layout() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -42,7 +44,8 @@ const router = createBrowserRouter([
       { index: true, element: <Dashboard /> },
       { path: "orders/new", element: <NewOrder /> },
       { path: "orders/:id", element: <InspectionForm /> },
-      { path: "review", element: <ComingSoon title="Review Queue" /> },
+      { path: "review", element: <ReviewQueue /> },
+      { path: "review/:id", element: <ReviewDetail /> },
       { path: "*", element: <ComingSoon title="Page not found" /> },
     ],
   },
