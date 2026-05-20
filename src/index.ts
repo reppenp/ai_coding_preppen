@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import orders from "./routes/orders";
 import forms from "./routes/forms";
 import photos from "./routes/photos";
+import decisions from "./routes/decisions";
 
 /**
  * Cloudflare bindings available to the Worker. Declared in wrangler.toml.
@@ -27,9 +28,12 @@ app.get("/health", (c) => c.json({ status: "ok" }));
 
 // Feature API. Everything the SPA talks to lives under /api. `orders` owns
 // the collection routes (/api/orders); `forms` owns the per-order inspection
-// routes (/api/orders/:id/form, /:id/submit). No path overlap between them.
+// routes (/api/orders/:id/form, /:id/submit); `photos` owns the section
+// attachment routes; `decisions` owns Kelly's review-and-record endpoints.
+// No path overlap between them.
 app.route("/api/orders", orders);
 app.route("/api/orders", forms);
 app.route("/api/orders", photos);
+app.route("/api/orders", decisions);
 
 export default app;

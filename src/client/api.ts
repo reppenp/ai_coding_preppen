@@ -21,6 +21,9 @@ export interface Order {
   updated_at: string;
   submitted_at: string | null;
   decided_at: string | null;
+  /** Whole days between created_at and decided_at; null until decided. Computed
+   *  server-side (PRD §4 story 4) so every client sees the same number. */
+  cycle_time_days: number | null;
 }
 
 export interface NewOrderInput {
@@ -182,4 +185,56 @@ export async function submitForm(
     );
   }
   return (await res.json()) as { ok: true; status: OrderStatus };
+}
+
+// ─── Underwriter decision (Phase 4, Story 3) ───────────────────────────────
+// Wraps GET / POST /api/orders/:id/decision. Strings mirror PRD §4 story 3
+// verbatim — kept in sync with the CHECK lists in migration 0005.
+
+export type PremiumDirection = "increase" | "decrease" | "no change";
+export type PolicyAction = "approve" | "cancel" | "renew";
+
+export interface Decision {
+  id: string;
+  inspection_id: string;
+  notes: string | null;
+  premium_direction: PremiumDirection;
+  policy_action: PolicyAction;
+  decided_by: string | null;
+  created_at: string;
+}
+
+export interface DecisionInput {
+  premium_direction: PremiumDirection;
+  policy_action: PolicyAction;
+  notes?: string;
+}
+
+export async function loadDecision(id: string): Promise<Decision | null> {
+  const res = await fetch(`/api/orders/${id}/decision`);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Failed to load decision (${res.status})`);
+  }
+  return ((await res.json()) as { decision: Decision | null }).decision;
+}
+
+export async function recordDecision(
+  id: string,
+  input: DecisionInput,
+): Promise<{ ok: true; status: OrderStatus; decision: Decision }> {
+  const res = await fetch(`/api/orders/${id}/decision`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Failed to record decision (${res.status})`);
+  }
+  return (await res.json()) as {
+    ok: true;
+    status: OrderStatus;
+    decision: Decision;
+  };
 }
