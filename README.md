@@ -103,6 +103,8 @@ If you want stricter behavior, swap the Stop hook for a `PostToolUse` hook (runs
 
 _Replace these once you deploy and record:_
 
-🔗 **Live site:** [https://ai-coding-preppen.pjreppen.workers.dev](https://ai-coding-preppen.pjreppen.workers.dev)
-🎥 **PRD video:** [your-prd-video-link]
-🎥 **Demo video:** [your-demo-video-link]
+🔗 **Live site:** [https://ai-coding-preppen.pjreppen.workers.dev]
+
+🎥 **PRD video:** [https://www.loom.com/share/f324f6c984274abbaa26cf3971984347]
+
+🎥 **Demo video:** [https://www.loom.com/share/2faa1d1fca084f478a659619cbe2e62c]
